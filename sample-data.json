@@ -1,0 +1,26 @@
+[
+  {
+    "id": "1988a3a33d6c9e2e",
+    "threadId": "198889f98762aa19",
+    "snippet": "Dear Customer, Thanking you for banking with Canara Bank. An amount of INR 620.00 has been DEBITED to your account XXX250 on 08/08/2025. Total Avail.bal INR 2,82218.66.To report fraud &amp; stop",
+    "payload": {
+      "mimeType": "text/plain"
+    },
+    "sizeEstimate": 6744,
+    "historyId": "1910165",
+    "internalDate": "1754665726000",
+    "labels": [
+      {
+        "id": "INBOX",
+        "name": "INBOX"
+      },
+      {
+        "id": "CATEGORY_UPDATES",
+        "name": "CATEGORY_UPDATES"
+      }
+    ],
+    "From": "canarabank@canarabank.com",
+    "To": "senthilkannanarmy@gmail.com",
+    "Subject": "ATM/IMPS/UPI Transaction Alert"
+  }
+]

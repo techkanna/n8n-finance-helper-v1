@@ -1,0 +1,18 @@
+Extract transaction data from this email. Return JSON only.
+
+Email metadata:
+- From: {{From}}
+- Subject: {{Subject}}
+- Snippet: {{snippet}}
+- Body (may be empty): {{body}}
+
+Rules:
+- Parse amounts and currency
+- Determine CREDITED or DEBITED and map to type
+- Extract account masked digits if present
+- Parse transaction date (YYYY-MM-DD)
+- Extract bank name from sender or content when evident
+- Include a concise description if present (e.g., merchant/payee), else null
+- If any field cannot be confidently determined, set to null and lower confidence
+
+

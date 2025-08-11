@@ -1,0 +1,80 @@
+{
+  "name": "Email → Parse → Sheet (Canara Bank)",
+  "nodes": [
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "watch",
+        "additionalFields": {
+          "query": "from:canarabank@canarabank.com subject:(Transaction Alert)",
+          "includeSpamTrash": false
+        }
+      },
+      "id": "Gmail Trigger",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [200, 200],
+      "credentials": {
+        "gmailOAuth2": "Gmail OAuth2"
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Paste from parsers/parse-canara.js\nfunction parseAmountAndDirection(text) {\n  const amtDir = text.match(/amount\\s+of\\s+([A-Z]{3})?\\s?([\\d,]+(?:\\.\\d{1,2})?)\\s+has\\s+been\\s+(DEBITED|CREDITED)/i);\n  if (!amtDir) return { amount: null, currency: null, direction: null };\n  const currency = (amtDir[1] || 'INR').toUpperCase();\n  const amount = Number(amtDir[2].replace(/,/g, ''));\n  const direction = amtDir[3].toUpperCase();\n  return { amount, currency, direction };\n}\nfunction parseAccountMask(text) {\n  const m1 = text.match(/account\\s+X+([\\d]{2,})/i);\n  if (m1) return m1[1];\n  const m2 = text.match(/A\\/?c\\.?\\s*(?:no\\.?\\s*)?X+([\\d]{2,})/i);\n  if (m2) return m2[1];\n  return null;\n}\nfunction parseTxnDate(text) {\n  const m1 = text.match(/on\\s+(\\d{2})\\/(\\d{2})\\/(\\d{4})/i);\n  if (m1) return `${m1[3]}-${m1[2]}-${m1[1]}`;\n  const m2 = text.match(/on\\s+(\\d{4})-(\\d{2})-(\\d{2})/i);\n  if (m2) return `${m2[1]}-${m2[2]}-${m2[3]}`;\n  return null;\n}\nfunction parseBalanceAfter(text) {\n  const m1 = text.match(/(?:Avail\\.?\\s*bal|Avl\\.?\\s*Bal|Available\\s*Balance)[^\\d]*([A-Z]{3})?\\s?([\\d,]+(?:\\.\\d{1,2})?)/i);\n  if (!m1) return null;\n  const bal = Number(m1[2].replace(/,/g, ''));\n  return isNaN(bal) ? null : bal;\n}\nfunction normalizeWhitespace(text) {\n  return String(text || '')\n    .replace(/\\r/g, ' ')\n    .replace(/\\n/g, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\nconst tz = 'Asia/Kolkata';\nconst now = new Date(new Date().toLocaleString('en-US', { timeZone: tz }));\nconst isoTimestamp = now.toISOString();\nreturn $input.all().map(item => {\n  const j = item.json || {};\n  const snippet = normalizeWhitespace(j.snippet || j.body || j.text || '');\n  const subject = normalizeWhitespace(j.Subject || j.subject || '');\n  const from = normalizeWhitespace(j.From || j.from || '');\n  const messageId = j.id || j.messageId || null;\n  const threadId = j.threadId || null;\n  const { amount, currency, direction } = parseAmountAndDirection(snippet + ' ' + subject);\n  const accountMask = parseAccountMask(snippet + ' ' + subject);\n  const txnDate = parseTxnDate(snippet + ' ' + subject);\n  const balanceAfter = parseBalanceAfter(snippet + ' ' + subject);\n  const type = direction === 'CREDITED' ? 'income' : (direction === 'DEBITED' ? 'expense' : null);\n  const accountName = accountMask ? `Canara Bank - XXXX${accountMask}` : 'Canara Bank - Account';\n  return { json: { timestamp: isoTimestamp, bank: 'Canara Bank', account_name: accountName, account_mask: accountMask, amount, currency: currency || 'INR', direction, type, txn_date: txnDate, balance_after: balanceAfter, source_email: from, subject, message_id: messageId, thread_id: threadId, raw_snippet: snippet } };\n});"
+      },
+      "id": "Parse Function",
+      "name": "Parse Canara Email",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [520, 200]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "sheetId": "",
+        "range": "TransactionsRaw",
+        "options": {
+          "valueInputMode": "RAW"
+        },
+        "keyRow": 1
+      },
+      "id": "Append Sheet",
+      "name": "Google Sheets - Append",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [840, 200],
+      "credentials": {
+        "googleSheetsOAuth2Api": "Google Sheets OAuth"
+      },
+      "notesInFlow": true,
+      "notes": "Map outgoing fields to columns in TransactionsRaw sheet"
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Canara Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Canara Email": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets - Append",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
+
+

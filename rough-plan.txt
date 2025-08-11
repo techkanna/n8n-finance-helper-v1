@@ -1,0 +1,13 @@
+
+1. collect the transaction details into the sheets
+email triggerer - to get the mail details
+code - to extract the details from email details
+excelsheet- add the transaction details to the sheet
+
+
+
+2. verify the details in excelsheet and store in the postgress db
+
+sheduler triggerer - at 11:00PM every day
+Exchelsheet - to read the current date transaction details 
+postgress - to store the details.
