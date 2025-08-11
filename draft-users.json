@@ -1,0 +1,20 @@
+[
+  {
+    "id": "11111111-1111-1111-1111-111111111111",
+    "name": "Senthil Kannan",
+    "email": "senthilkannanarmy@gmail.com",
+    "password_hash": "techkanna",
+    "created_at": "2025-08-06T11:57:11.000Z",
+    "updated_at": "2025-08-06T11:57:11.000Z",
+    "username": null
+  },
+  {
+    "id": "30ff166a-cbd1-47e2-80b9-f2fc93e77d9c",
+    "name": "`$json.name`",
+    "email": "`$json.email`",
+    "password_hash": null,
+    "created_at": "2025-08-11T11:55:50.140Z",
+    "updated_at": "2025-08-11T11:55:50.140Z",
+    "username": "`$json.username`"
+  }
+]

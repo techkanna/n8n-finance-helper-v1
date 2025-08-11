@@ -71,31 +71,30 @@ user_email,account_name,type,currency,bank_hint,is_active
 ```
 user_email,category_name,type,parent_category_name
 ```
-- [ ] Transactions_Staging
+- [x] Transactions_Staging
 ```
 status,user_email,account_hint,amount,currency,type,txn_date,description,merchant,channel,raw_from,subject,gmail_message_id,extraction_confidence,notes,inserted_txn_id
 ```
 
-- [ ] Note down the Spreadsheet ID (from the URL)
+- [x] Note down the Spreadsheet ID (from the URL)
+
+`https://docs.google.com/spreadsheets/d/1TH36ljdTe_dvJFE8VL6XFWY_TH3mV-bm0qoIPCHa01o/edit?usp=sharing`
 
 ---
 
 ## 4) Workflow A — Master Data Sync (Sheets → Postgres)
 Trigger: Manual or Cron (weekly) to upsert users, accounts, categories into Postgres.
 
-- [ ] Create a new workflow in n8n named: Master Data Sync
-- [ ] Add Trigger: Cron (weekly) OR keep Manual Trigger for on-demand sync
+- [x] Create a new workflow in n8n named: Master Data Sync
+- [x] Add Trigger: Cron (weekly) OR keep Manual Trigger for on-demand sync
 
 Users upsert:
-- [ ] Node: Google Sheets (Operation: Read, Sheet: Users)
+- [x] Node: Google Sheets (Operation: Read, Sheet: Users)
 - [ ] Node: Postgres (Execute Query) to upsert by email
 
 ```sql
 WITH incoming AS (
-  SELECT
-    {{ $json.email }}::text AS email,
-    {{ $json.username }}::text AS username,
-    {{ $json.name }}::text AS name
+  SELECT $1::text AS email, $2::text AS username, $3::text AS name
 )
 INSERT INTO users (email, username, name)
 SELECT email, username, name FROM incoming
@@ -106,6 +105,7 @@ DO UPDATE SET
   updated_at = now()
 RETURNING id;
 ```
+Parameters (in order): `$json.email`, `$json.username`, `$json.name`.
 
 Accounts upsert:
 - [ ] Node: Google Sheets (Read, Sheet: Accounts)
@@ -113,15 +113,20 @@ Accounts upsert:
 
 ```sql
 WITH u AS (
-  SELECT id AS user_id FROM users WHERE email = {{ $json.user_email }} LIMIT 1
+  SELECT id AS user_id FROM users WHERE email = $1::text LIMIT 1
 ), incoming AS (
   SELECT
     (SELECT user_id FROM u) AS user_id,
-    {{ $json.account_name }}::text AS name,
-    {{ $json.type }}::text AS type,
-    COALESCE({{ $json.currency }}::text, 'INR') AS currency,
-    COALESCE({{ $json.bank_hint }}::text, NULL) AS bank_hint,
-    COALESCE({{ $json.is_active }}::boolean, true) AS is_active
+    $2::text AS name,
+    $3::text AS type,
+    COALESCE($4::text, 'INR') AS currency,
+    NULLIF($5::text, '') AS bank_hint,
+    CASE
+      WHEN $6::text IS NULL OR $6::text = '' THEN true
+      WHEN LOWER($6::text) IN ('true','t','1','yes','y') THEN true
+      WHEN LOWER($6::text) IN ('false','f','0','no','n') THEN false
+      ELSE true
+    END AS is_active
 )
 INSERT INTO accounts (user_id, name, type, currency, bank_hint, is_active)
 SELECT user_id, name, type, currency, bank_hint, is_active FROM incoming
@@ -133,6 +138,9 @@ DO UPDATE SET
   is_active = EXCLUDED.is_active
 RETURNING id;
 ```
+Parameters (in order): `$json.user_email`, `$json.account_name`, `$json.type`, `$json.currency`, `$json.bank_hint`, `$json.is_active`.
+
+Note: In n8n “Query Parameters”, add each value as an Expression (gear icon), e.g. `{{$json.is_active}}` (no quotes). If your sheet stores booleans as text (e.g., TRUE/FALSE/Yes/No), the CASE above will coerce them safely.
 
 Categories upsert:
 - [ ] Node: Google Sheets (Read, Sheet: Categories)
@@ -140,19 +148,19 @@ Categories upsert:
 
 ```sql
 WITH u AS (
-  SELECT id AS user_id FROM users WHERE email = {{ $json.user_email }} LIMIT 1
+  SELECT id AS user_id FROM users WHERE email = $1::text LIMIT 1
 ), parent AS (
   SELECT id AS parent_id
   FROM categories
   WHERE user_id = (SELECT user_id FROM u)
-    AND name = {{ $json.parent_category_name }}
-    AND type = {{ $json.type }}
+    AND name = $2::text
+    AND type = $3::text
   LIMIT 1
 ), incoming AS (
   SELECT
     (SELECT user_id FROM u) AS user_id,
-    {{ $json.category_name }}::text AS name,
-    {{ $json.type }}::text AS type,
+    $4::text AS name,
+    $3::text AS type,
     (SELECT parent_id FROM parent) AS parent_id
 )
 INSERT INTO categories (user_id, name, type, parent_id)
@@ -161,6 +169,7 @@ ON CONFLICT (user_id, name, type)
 DO UPDATE SET parent_id = EXCLUDED.parent_id
 RETURNING id;
 ```
+Parameters (in order): `$json.user_email`, `$json.parent_category_name`, `$json.type`, `$json.category_name`.
 
 - [ ] Test run Workflow A and confirm rows are upserted
 
@@ -281,18 +290,18 @@ Resolve IDs and optional auto-categorize:
 - [ ] Node: Postgres (Execute Query) — get `user_id`
 
 ```sql
-SELECT id FROM users WHERE email = {{ $json.user_email }} LIMIT 1;
+SELECT id FROM users WHERE email = $1::text LIMIT 1;
 ```
+Parameters: `$json.user_email`.
 
 - [ ] Node: Postgres (Execute Query) — get `account_id` by `bank_hint`
 
 ```sql
-SELECT a.id
-FROM accounts a
-WHERE a.user_id = {{ $json.user_id }}::uuid
-  AND a.bank_hint = {{ $json.account_hint }}
+SELECT id FROM accounts
+WHERE user_id = $1::uuid AND bank_hint = $2::text
 LIMIT 1;
 ```
+Parameters: `$json.user_id`, `$json.account_hint`.
 
 - [ ] Optional Node: OpenAI (Chat) — categorize into existing categories
   - System:
@@ -313,39 +322,40 @@ Transaction: {{ $json.description }} | {{ $json.merchant }} | {{ $json.channel }
 
 ```sql
 SELECT id FROM categories
-WHERE user_id = {{ $json.user_id }}::uuid
-  AND name = {{ $json.category_name }}
+WHERE user_id = $1::uuid AND name = $2::text
 LIMIT 1;
 ```
+Parameters: `$json.user_id`, `$json.category_name`.
 
 Idempotent insert and writeback:
 - [ ] Node: Postgres (Execute Query) — insert if not exists (using `external_id`)
 
 ```sql
 WITH found AS (
-  SELECT id FROM transactions WHERE external_id = {{ $json.gmail_message_id }} LIMIT 1
+  SELECT id FROM transactions WHERE external_id = $8::text LIMIT 1
 ), ins AS (
   INSERT INTO transactions (
     user_id, account_id, amount, type, category_id, description,
     notes, tags, txn_date, status, external_id
   )
   SELECT
-    {{ $json.user_id }}::uuid,
-    {{ $json.account_id }}::uuid,
-    {{ $json.amount }}::numeric,
-    {{ $json.type }}::text,
-    {{ $json.category_id }}::uuid,
-    {{ $json.description }}::text,
-    {{ $json.notes }}::text,
-    ARRAY[{{ 'gmail_id:' + $json.gmail_message_id }}::text],
-    {{ $json.txn_date }}::date,
+    $1::uuid,
+    $2::uuid,
+    $3::numeric,
+    $4::text,
+    $5::uuid,
+    $6::text,
+    $7::text,
+    ARRAY['gmail_id:' || $8::text],
+    $9::date,
     'posted',
-    {{ $json.gmail_message_id }}::text
+    $8::text
   WHERE NOT EXISTS (SELECT 1 FROM found)
   RETURNING id
 )
 SELECT COALESCE((SELECT id FROM ins), (SELECT id FROM found)) AS id;
 ```
+Parameters (in order): `$json.user_id`, `$json.account_id`, `$json.amount`, `$json.type`, `$json.category_id`, `$json.description`, `$json.notes`, `$json.gmail_message_id`, `$json.txn_date`.
 
 - [ ] Node: Google Sheets (Update row) — set `status = imported`, `inserted_txn_id = {{$json.id}}`
 - [ ] Test: run Nightly Import manually; confirm records in `transactions`

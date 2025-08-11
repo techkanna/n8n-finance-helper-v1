@@ -1,0 +1,35 @@
+[
+  {
+    "id": "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1",
+    "user_id": "11111111-1111-1111-1111-111111111111",
+    "name": "Canara Bank",
+    "type": "bank",
+    "currency": "INR",
+    "balance": "266098.66",
+    "is_active": true,
+    "created_at": "2025-08-06T11:57:11.003Z",
+    "bank_hint": null
+  },
+  {
+    "id": "b2b2b2b2-b2b2-b2b2-b2b2-b2b2b2b2b2b2",
+    "user_id": "11111111-1111-1111-1111-111111111111",
+    "name": "Bank Of Baroda",
+    "type": "bank",
+    "currency": "INR",
+    "balance": "292777.19",
+    "is_active": true,
+    "created_at": "2025-08-06T11:57:11.003Z",
+    "bank_hint": null
+  },
+  {
+    "id": "9abf6e9c-20b1-4cfa-a28e-4e8d31aa9632",
+    "user_id": null,
+    "name": "`$json.account_name`",
+    "type": "`$json.type`",
+    "currency": "`$json.cur",
+    "balance": "0.00",
+    "is_active": true,
+    "created_at": "2025-08-11T12:19:59.007Z",
+    "bank_hint": "`$json.bank_hint`"
+  }
+]

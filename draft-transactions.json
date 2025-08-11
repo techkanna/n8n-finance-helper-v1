@@ -1,0 +1,48 @@
+[
+  {
+    "id": "66666666-6666-4666-8666-666666666666",
+    "user_id": "11111111-1111-1111-1111-111111111111",
+    "account_id": "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1",
+    "amount": "50000.00",
+    "type": "income",
+    "category_id": "c2c2c2c2-c2c2-c2c2-c2c2-c2c2c2c2c2c2",
+    "description": "Monthly salary",
+    "notes": null,
+    "tags": [
+      "august",
+      "salary"
+    ],
+    "is_recurring": false,
+    "status": "pending",
+    "txn_date": "2025-08-01T00:00:00.000Z",
+    "created_at": "2025-08-06T12:09:40.475Z",
+    "updated_at": "2025-08-06T12:09:40.475Z",
+    "attachment_url": null,
+    "batch_id": null,
+    "related_txn_id": null,
+    "external_id": null
+  },
+  {
+    "id": "77777777-7777-4777-8777-777777777777",
+    "user_id": "11111111-1111-1111-1111-111111111111",
+    "account_id": "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1",
+    "amount": "1500.00",
+    "type": "expense",
+    "category_id": "c1c1c1c1-c1c1-c1c1-c1c1-c1c1c1c1c1c1",
+    "description": "Weekly groceries",
+    "notes": null,
+    "tags": [
+      "food",
+      "kitchen"
+    ],
+    "is_recurring": false,
+    "status": "pending",
+    "txn_date": "2025-08-04T00:00:00.000Z",
+    "created_at": "2025-08-06T12:09:40.475Z",
+    "updated_at": "2025-08-06T12:09:40.475Z",
+    "attachment_url": null,
+    "batch_id": null,
+    "related_txn_id": null,
+    "external_id": null
+  }
+]
