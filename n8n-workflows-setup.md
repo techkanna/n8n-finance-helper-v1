@@ -108,8 +108,8 @@ RETURNING id;
 Parameters (in order): `$json.email`, `$json.username`, `$json.name`.
 
 Accounts upsert:
-- [ ] Node: Google Sheets (Read, Sheet: Accounts)
-- [ ] Node: Postgres (Execute Query) to upsert `(user_id, name)` and set `bank_hint`
+- [x] Node: Google Sheets (Read, Sheet: Accounts)
+- [x] Node: Postgres (Execute Query) to upsert `(user_id, name)` and set `bank_hint`
 
 ```sql
 WITH u AS (
@@ -143,8 +143,8 @@ Parameters (in order): `$json.user_email`, `$json.account_name`, `$json.type`, `
 Note: In n8n “Query Parameters”, add each value as an Expression (gear icon), e.g. `{{$json.is_active}}` (no quotes). If your sheet stores booleans as text (e.g., TRUE/FALSE/Yes/No), the CASE above will coerce them safely.
 
 Categories upsert:
-- [ ] Node: Google Sheets (Read, Sheet: Categories)
-- [ ] Node: Postgres (Execute Query) to resolve parent and upsert `(user_id, name, type)`
+- [x] Node: Google Sheets (Read, Sheet: Categories)
+- [x] Node: Postgres (Execute Query) to resolve parent and upsert `(user_id, name, type)`
 
 ```sql
 WITH u AS (
@@ -153,7 +153,7 @@ WITH u AS (
   SELECT id AS parent_id
   FROM categories
   WHERE user_id = (SELECT user_id FROM u)
-    AND name = $2::text
+    AND name = NULLIF($2::text, '')
     AND type = $3::text
   LIMIT 1
 ), incoming AS (
@@ -171,19 +171,19 @@ RETURNING id;
 ```
 Parameters (in order): `$json.user_email`, `$json.parent_category_name`, `$json.type`, `$json.category_name`.
 
-- [ ] Test run Workflow A and confirm rows are upserted
+- [x] Test run Workflow A and confirm rows are upserted
 
 ---
 
 ## 5) Workflow B — Email to Staging (near real-time)
 Trigger: Gmail polling, extract via OpenAI, fallback to regex, write to `Transactions_Staging`.
 
-- [ ] Create a new workflow: Email to Staging
-- [ ] Node: Gmail (Operation: Read Messages)
+- [x] Create a new workflow: Email to Staging
+- [x] Node: Gmail (Operation: Read Messages)
   - Query example: `from:(canarabank.com OR icicibank.com OR hdfcbank.net) (transaction OR alert) newer_than:2d`
 
 Prepare payload:
-- [ ] Node: Function (convert Gmail message to text fields)
+- [x] Node: Function (convert Gmail message to text fields)
 
 ```javascript
 // Input: Gmail item in item.json
@@ -203,7 +203,7 @@ return [{
 ```
 
 OpenAI extraction:
-- [ ] Node: OpenAI (Chat) — model `gpt-4o-mini`, temperature `0.2`, response format JSON
+- [x] Node: OpenAI (Chat) — model `gpt-4o-mini`, temperature `0.2`, response format JSON
   - System:
 
 ```text
@@ -216,7 +216,7 @@ If unknown, set null. Infer type from words like DEBITED/CREDITED. Infer channel
   - User: `{{ $json.raw_text }}`
 
 Fallback parser when confidence is low:
-- [ ] Node: IF — condition `{{ $json.confidence >= 0.7 }}`
+- [x] Node: IF — condition `{{ $json.confidence >= 0.7 }}`
   - False branch → Node: Function (regex fallback)
 
 ```javascript
@@ -245,7 +245,7 @@ return [{
 ```
 
 Normalize and append to sheet:
-- [ ] Node: Function (normalize for sheet)
+- [x] Node: Function (normalize for sheet)
 
 ```javascript
 return [{
@@ -267,7 +267,7 @@ return [{
 }];
 ```
 
-- [ ] Node: Google Sheets (Append Row → `Transactions_Staging`)
+- [x] Node: Google Sheets (Append Row → `Transactions_Staging`)
 - [ ] Optional dedupe: before append, check if `gmail_message_id` already exists (Lookup or handle during nightly import)
 - [ ] Test: run the workflow; verify a new row appears in `Transactions_Staging`
 
